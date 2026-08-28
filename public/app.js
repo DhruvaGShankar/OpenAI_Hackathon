@@ -133,7 +133,8 @@ function login() {
         
         <button class="link" data-go="landing" style="margin-top:20px; font-size:13px; border:0; background:none; color:var(--muted); cursor:pointer;">${icon("arrow_back")} Return to Home</button>
       </div>
-    </div>`;
+    </div>
+    <div class="toast" id="toast"></div>`;
 }
 
 function landing() {
@@ -369,10 +370,10 @@ async function bootstrap() {
 
 function doQuickLogin() {
   sessionStorage.setItem("isLoggedIn", "true");
-  showToast(`Welcome back, ${model ? model.student.name : "Aarav"}!`);
   current = "passport";
   render();
   window.scrollTo(0, 0);
+  showToast(`Welcome back, ${model ? model.student.name : "Aarav"}!`);
 }
 
 function render() {
@@ -631,7 +632,13 @@ function updateWhatIf(sliderValue) {
 }
 
 function showToast(message) {
-  const toast = document.querySelector("#toast");
+  let toast = document.querySelector("#toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
   toast.textContent = message;
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2400);
