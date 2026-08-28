@@ -1,5 +1,5 @@
 const app = document.querySelector("#app");
-let current = "landing";
+let current = "login";
 let model = null;
 let selectedPlan = [];
 
@@ -25,7 +25,8 @@ function icon(name, fill = false) {
 }
 
 function brand() {
-  return `<a class="brand" data-go="landing"><span class="brand-mark">${icon("school")}</span><span>ABC Student Passport</span></a>`;
+  const dest = sessionStorage.getItem("isLoggedIn") === "true" ? "passport" : "login";
+  return `<a class="brand" data-go="${dest}"><span class="brand-mark">${icon("school")}</span><span>ABC Student Passport</span></a>`;
 }
 
 function nav() {
@@ -123,8 +124,6 @@ function login() {
             Sign In ${icon("arrow_forward")}
           </button>
         </form>
-        
-        <button class="link" data-go="landing" style="margin-top:20px; font-size:13px; border:0; background:none; color:var(--muted); cursor:pointer;">${icon("arrow_back")} Return to Home</button>
       </div>
     </div>
     <div class="toast" id="toast"></div>`;
@@ -472,6 +471,8 @@ async function bootstrap() {
   } catch (e) {
     selectedPlan = [];
   }
+  const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true";
+  current = isLoggedIn ? "passport" : "login";
   render();
 }
 
