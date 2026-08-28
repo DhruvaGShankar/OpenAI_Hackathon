@@ -161,7 +161,11 @@ button{cursor:pointer}
 .recommendation{align-items:center}
 .recommendation .course-icon{background:#f4f1ff}
 .add-button{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:900;white-space:nowrap}
+.add-button.remove-state{background:var(--soft);border-color:var(--line);color:#e74c3c;}
 .add-button:disabled{background:var(--soft);border-color:var(--line);color:var(--muted);cursor:default}
+.whatif-details{margin:15px 0;padding:15px;background:#f8f9fa;border-radius:8px;border:1px solid var(--line);font-size:14px;color:var(--text)}
+.dynamic-req-list{margin-top:10px;padding-left:20px;font-size:13px;color:var(--primary);font-weight:500;}
+.dynamic-req-list li{margin-bottom:4px;}
 .whatif{background:#16113b;color:white;border-color:#16113b}
 .whatif .card-desc{color:#c7c2ef}
 .slider-row{margin:26px 0 18px}

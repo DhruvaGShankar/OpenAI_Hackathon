@@ -266,20 +266,27 @@ function planning() {
             <div class="recommendation">
               <div class="course-icon">${icon(course.icon)}</div>
               <div><b>${course.name}</b><p>${course.credits} credits - satisfies ${course.satisfies}. ${course.reason}</p></div>
-              <button class="add-button" data-add="${course.name}" ${selectedPlan.includes(course.name) ? "disabled" : ""}>${selectedPlan.includes(course.name) ? "Added" : "Add to plan"}</button>
+              <button class="add-button ${selectedPlan.includes(course.name) ? 'remove-state' : ''}" data-add="${course.name}">${selectedPlan.includes(course.name) ? "Remove" : "Add to plan"}</button>
             </div>`).join("")}
         </div>
       </section>
       <aside class="card whatif">
         <h2>What if I take more?</h2>
         <p class="card-desc">See how a next-term load changes your path.</p>
+        
+        <div class="whatif-details">
+           <div style="display:flex; justify-content: space-between;"><span>Projected Earned:</span> <b id="projected-earned">...</b></div>
+           <div style="display:flex; justify-content: space-between;"><span>Projected Remaining:</span> <b id="projected-remaining">...</b></div>
+           <ul id="dynamic-req-list" class="dynamic-req-list"></ul>
+        </div>
+
         <div class="slider-row">
           <label><span>Next-term credits</span><span id="credit-value">${model.planning.defaultLoad} credits</span></label>
           <input id="credit-slider" type="range" min="8" max="22" value="${model.planning.defaultLoad}" />
         </div>
         <div class="whatif-result">
           <b id="result-date">On track for May 2027</b>
-          <span id="result-copy">You will have ${model.student.remaining - model.planning.defaultLoad} credits remaining after next term, including your capstone.</span>
+          <span id="result-copy"></span>
         </div>
       </aside>
     </div>`,
@@ -290,12 +297,22 @@ function planning() {
 async function bootstrap() {
   app.innerHTML = `<div class="loader">Loading student passport...</div>`;
   model = await api("/api/dashboard");
+  try {
+    const stored = JSON.parse(localStorage.getItem("selectedPlan") || "[]");
+    const validNames = new Set(model.planning.recommendations.map(r => r.name));
+    selectedPlan = stored.filter(name => validNames.has(name));
+  } catch (e) {
+    selectedPlan = [];
+  }
   render();
 }
 
 function render() {
   app.innerHTML = current === "landing" ? landing() : ({ passport, record, need, ask, planning }[current]());
   bind();
+  if (current === "planning") {
+    updateWhatIf();
+  }
 }
 
 function bind() {
@@ -322,10 +339,19 @@ function bind() {
   document.querySelectorAll("[data-add]").forEach((element) => {
     element.addEventListener("click", () => {
       const name = element.dataset.add;
-      selectedPlan = [...new Set([...selectedPlan, name])];
-      element.textContent = "Added";
-      element.disabled = true;
-      showToast(`${name} added to your draft plan`);
+      if (selectedPlan.includes(name)) {
+        selectedPlan = selectedPlan.filter(n => n !== name);
+        element.textContent = "Add to plan";
+        element.classList.remove("remove-state");
+        showToast(`${name} removed from your draft plan`);
+      } else {
+        selectedPlan = [...new Set([...selectedPlan, name])];
+        element.textContent = "Remove";
+        element.classList.add("remove-state");
+        showToast(`${name} added to your draft plan`);
+      }
+      localStorage.setItem("selectedPlan", JSON.stringify(selectedPlan));
+      updateWhatIf();
     });
   });
 
@@ -436,11 +462,75 @@ async function askQuestion(question) {
   }
 }
 
-async function updateWhatIf(load) {
-  const result = await api(`/api/what-if?load=${load}`);
-  document.querySelector("#credit-value").textContent = `${load} credits`;
-  document.querySelector("#result-date").textContent = result.status;
-  document.querySelector("#result-copy").textContent = result.copy;
+function updateWhatIf(sliderValue) {
+  const plannedCourses = selectedPlan
+    .map(name => model.planning.recommendations.find(r => r.name === name))
+    .filter(Boolean);
+  
+  const explicitlyPlannedCredits = plannedCourses.reduce((sum, c) => sum + c.credits, 0);
+  let currentSliderMin = Math.max(8, explicitlyPlannedCredits);
+  
+  const slider = document.querySelector("#credit-slider");
+  if (slider) {
+    slider.min = currentSliderMin;
+    if (Number(slider.value) < currentSliderMin) {
+      slider.value = currentSliderMin;
+      sliderValue = currentSliderMin;
+    } else if (sliderValue === undefined) {
+      sliderValue = Number(slider.value);
+    }
+  } else {
+    sliderValue = Math.max(currentSliderMin, sliderValue || model.planning.defaultLoad);
+  }
+
+  const hypotheticalCredits = Math.max(0, sliderValue - explicitlyPlannedCredits);
+  const totalProjectedCredits = explicitlyPlannedCredits + hypotheticalCredits;
+
+  const projectedEarned = model.student.earned + totalProjectedCredits;
+  const projectedRemaining = Math.max(0, model.student.remaining - totalProjectedCredits);
+
+  const reqDeductions = {};
+  plannedCourses.forEach(c => {
+    if (c.satisfiesRequirementId) {
+      reqDeductions[c.satisfiesRequirementId] = (reqDeductions[c.satisfiesRequirementId] || 0) + c.credits;
+    }
+  });
+
+  const aheadOfPace = (projectedRemaining / 2) <= 14;
+  const dateText = aheadOfPace ? "May 2027 looks achievable" : "On track for May 2027";
+  
+  let copyText = `You will have ${projectedRemaining} credits remaining after next term`;
+  if (explicitlyPlannedCredits > 0 || hypotheticalCredits > 0) {
+     copyText += ` (including ${explicitlyPlannedCredits} selected`;
+     if (hypotheticalCredits > 0) {
+        copyText += ` and ${hypotheticalCredits} hypothetical additional`;
+     }
+     copyText += ` credits).`;
+  } else {
+     copyText += `.`;
+  }
+
+  if (document.querySelector("#credit-value")) document.querySelector("#credit-value").textContent = `${sliderValue} credits`;
+  if (document.querySelector("#result-date")) document.querySelector("#result-date").textContent = dateText;
+  if (document.querySelector("#result-copy")) document.querySelector("#result-copy").textContent = copyText;
+  
+  const reqList = document.querySelector("#dynamic-req-list");
+  if (reqList) {
+    reqList.innerHTML = model.requirements.map(req => {
+      const deduction = reqDeductions[req.title] || 0;
+      const projReqRem = Math.max(0, req.credits - deduction);
+      if (deduction > 0) {
+        return `<li><b>${req.title}</b>: ${projReqRem} remaining (${deduction} planned)</li>`;
+      }
+      return "";
+    }).join("");
+  }
+  
+  const totalProj = document.querySelector("#projected-earned");
+  if (totalProj) totalProj.textContent = projectedEarned;
+  
+  const remProj = document.querySelector("#projected-remaining");
+  if (remProj) remProj.textContent = projectedRemaining;
 }
 
 function showToast(message) {

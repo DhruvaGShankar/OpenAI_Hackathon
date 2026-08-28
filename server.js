@@ -150,10 +150,10 @@ const suggestions = [
 const planning = {
   defaultLoad: 14,
   recommendations: [
-    { name: "Advanced Natural Language Processing", credits: 4, satisfies: "Advanced AI/ML electives", reason: "It also supports a language-AI capstone direction.", icon: "record_voice_over" },
-    { name: "Cloud Computing Operations", credits: 3, satisfies: "Open elective", reason: "It gives practical deployment context for AI systems.", icon: "cloud" },
-    { name: "Technology, Society & Policy", credits: 4, satisfies: "Humanities & social science", reason: "It strengthens judgement around real-world technical decisions.", icon: "policy" },
-    { name: "Advanced Robotics", credits: 4, satisfies: "Advanced AI/ML electives", reason: "It builds depth for robotics, optimisation, and gaming use cases.", icon: "psychology_alt" },
+    { name: "Advanced Natural Language Processing", credits: 4, satisfies: "Advanced AI/ML electives", satisfiesRequirementId: "Advanced AI/ML electives", reason: "It also supports a language-AI capstone direction.", icon: "record_voice_over" },
+    { name: "Cloud Computing Operations", credits: 3, satisfies: "Open elective", satisfiesRequirementId: "Open elective", reason: "It gives practical deployment context for AI systems.", icon: "cloud" },
+    { name: "Technology, Society & Policy", credits: 4, satisfies: "Humanities & social science", satisfiesRequirementId: "Humanities & social science", reason: "It strengthens judgement around real-world technical decisions.", icon: "policy" },
+    { name: "Advanced Robotics", credits: 4, satisfies: "Advanced AI/ML electives", satisfiesRequirementId: "Advanced AI/ML electives", reason: "It builds depth for robotics, optimisation, and gaming use cases.", icon: "psychology_alt" },
   ],
 };
 
@@ -282,19 +282,6 @@ function handleApi(request, response, url) {
     return;
   }
 
-  if (request.method === "GET" && url.pathname === "/api/what-if") {
-    const load = Math.max(8, Math.min(22, Number(url.searchParams.get("load")) || dashboard.planning.defaultLoad));
-    const remainingAfterLoad = Math.max(0, dashboard.student.remaining - load);
-    const ahead = load >= 16;
-    sendJson(response, {
-      load,
-      status: ahead ? "Ahead of pace for May 2027" : "On track for May 2027",
-      copy: ahead
-        ? `You could leave ${remainingAfterLoad} credits after next term and create more room for the capstone.`
-        : `You will have ${remainingAfterLoad} credits remaining after next term, including your capstone.`,
-    });
-    return;
-  }
 
   if (request.method === "POST" && url.pathname === "/api/chat") {
     let body = "";
