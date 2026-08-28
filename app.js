@@ -3,6 +3,17 @@ let current = "landing";
 let model = null;
 let selectedPlan = [];
 let savedSliderValue = null;
+const CHAT_HISTORY_KEY = "askMyRecordHistory";
+const MAX_CHAT_MESSAGES = 24;
+const MAX_CHAT_MESSAGE_LENGTH = 4000;
+const defaultChatGreeting = "Hi Aarav - I can help you make sense of your academic record. Try one of the questions above.";
+const chatState = {
+  status: "IDLE",
+  requestId: 0,
+  activeRequestId: 0,
+  controller: null
+};
+let chatHistory = [];
 
 const navItems = [
   ["passport", "badge", "Passport"],
@@ -244,9 +255,7 @@ function ask() {
       <div class="suggestions">
         ${model.suggestions.map((s) => `<button class="suggestion">${s}</button>`).join("")}
       </div>
-      <div class="chat" id="chat">
-        <div class="message ai">Hi Aarav - I can help you make sense of your academic record. Try one of the questions above.</div>
-      </div>
+      <div class="chat" id="chat">${renderChatMessages()}</div>
       <div class="chat-input">
         <input id="question" aria-label="Ask about your record" placeholder="Ask about your academic record..." />
         <button id="send">Ask</button>
@@ -298,6 +307,7 @@ function planning() {
 async function bootstrap() {
   app.innerHTML = `<div class="loader">Loading student passport...</div>`;
   model = await api("/api/dashboard");
+  chatHistory = loadChatHistory();
   try {
     const stored = JSON.parse(localStorage.getItem("selectedPlan") || "[]");
     const validNames = new Set(model.planning.recommendations.map(r => r.name));
@@ -331,6 +341,9 @@ async function bootstrap() {
 }
 
 function render() {
+  if (current !== "ask") {
+    cancelActiveChatRequest();
+  }
   app.innerHTML = current === "landing" ? landing() : ({ passport, record, need, ask, planning }[current]());
   bind();
   if (current === "planning") {
@@ -355,8 +368,12 @@ function bind() {
   if (send) {
     send.addEventListener("click", () => askQuestion(document.querySelector("#question").value));
     document.querySelector("#question").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") askQuestion(event.target.value);
+      if (event.key === "Enter") {
+        event.preventDefault();
+        askQuestion(event.target.value);
+      }
     });
+    setChatControlsDisabled(isChatRequestActive());
   }
 
   document.querySelectorAll("[data-add]").forEach((element) => {
@@ -384,104 +401,290 @@ function bind() {
   }
 }
 
-async function askQuestion(question) {
-  if (!question.trim()) return;
-  const chat = document.querySelector("#chat");
-  chat.insertAdjacentHTML("beforeend", `<div class="message user">${escapeHtml(question)}</div>`);
+function beginChatRequest() {
+  chatState.requestId += 1;
+  chatState.activeRequestId = chatState.requestId;
+  chatState.status = "SUBMITTING";
+  chatState.controller = new AbortController();
+  setChatControlsDisabled(true);
+  return chatState.activeRequestId;
+}
+
+function finishChatRequest(requestId) {
+  if (!isOwnedRequest(requestId)) return;
+  chatState.activeRequestId = 0;
+  chatState.status = "IDLE";
+  chatState.controller = null;
+  setChatControlsDisabled(false);
+}
+
+function cancelActiveChatRequest() {
+  if (!isChatRequestActive()) return;
+  const activeRequestId = chatState.activeRequestId;
+  const controller = chatState.controller;
+  chatState.activeRequestId = 0;
+  chatState.status = "IDLE";
+  chatState.controller = null;
+  if (controller) {
+    controller.abort();
+  }
+  const typing = document.querySelector(`.typing-indicator[data-request-id="${activeRequestId}"]`);
+  if (typing) typing.remove();
+  setChatControlsDisabled(false);
+}
+
+function isChatRequestActive() {
+  return chatState.activeRequestId !== 0;
+}
+
+function isOwnedRequest(requestId) {
+  return chatState.activeRequestId === requestId;
+}
+
+function setChatControlsDisabled(disabled) {
   const input = document.querySelector("#question");
   const sendButton = document.querySelector("#send");
-  
-  input.value = "";
-  input.disabled = true;
-  if (sendButton) sendButton.disabled = true;
+  if (input) input.disabled = disabled;
+  if (sendButton) sendButton.disabled = disabled;
+  document.querySelectorAll(".suggestion").forEach((button) => {
+    button.disabled = disabled;
+    button.setAttribute("aria-disabled", disabled ? "true" : "false");
+  });
+  if (!disabled && input && current === "ask") {
+    input.focus();
+  }
+}
 
-  chat.insertAdjacentHTML("beforeend", `<div class="message ai typing-indicator" id="typing-indicator"><span></span><span></span><span></span></div>`);
-  chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  
+function renderChatMessages() {
+  if (!chatHistory.length) {
+    return `<div class="message ai">${escapeHtml(defaultChatGreeting)}</div>`;
+  }
+  return chatHistory.map((message) => {
+    if (message.role === "user") {
+      return `<div class="message user">${escapeHtml(message.content)}</div>`;
+    }
+    return `<div class="message ai">${DOMPurify.sanitize(marked.parse(message.content))}</div>`;
+  }).join("");
+}
+
+function appendCompletedExchange(question, answer) {
+  const normalizedQuestion = normalizeChatContent(question);
+  const normalizedAnswer = normalizeChatContent(answer);
+  if (!normalizedQuestion || !normalizedAnswer) return;
+  chatHistory = trimChatHistory([
+    ...chatHistory,
+    { role: "user", content: normalizedQuestion },
+    { role: "assistant", content: normalizedAnswer }
+  ]);
+  persistChatHistory();
+}
+
+function loadChatHistory() {
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+      return [];
+    }
+    const validMessages = trimChatHistory(parsed
+      .filter(isValidChatMessage)
+      .map((message) => ({
+        role: message.role,
+        content: normalizeChatContent(message.content)
+      }))
+      .filter((message) => Boolean(message.content)));
+    if (validMessages.length !== parsed.length) {
+      if (validMessages.length) {
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(validMessages));
+      } else {
+        localStorage.removeItem(CHAT_HISTORY_KEY);
+      }
+    }
+    return validMessages;
+  } catch (error) {
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    return [];
+  }
+}
+
+function persistChatHistory() {
+  try {
+    if (!chatHistory.length) {
+      localStorage.removeItem(CHAT_HISTORY_KEY);
+      return;
+    }
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(trimChatHistory(chatHistory)));
+  } catch (error) {
+    console.warn("Could not persist chat history:", error);
+  }
+}
+
+function trimChatHistory(messages) {
+  return messages.slice(-MAX_CHAT_MESSAGES);
+}
+
+function isValidChatMessage(message) {
+  return Boolean(
+    message &&
+    typeof message === "object" &&
+    (message.role === "user" || message.role === "assistant") &&
+    typeof message.content === "string" &&
+    message.content.trim() &&
+    message.content.length <= MAX_CHAT_MESSAGE_LENGTH
+  );
+}
+
+function normalizeChatContent(content) {
+  return String(content || "").trim().slice(0, MAX_CHAT_MESSAGE_LENGTH);
+}
+
+async function askQuestion(question) {
+  const trimmedQuestion = String(question || "").trim();
+  if (!trimmedQuestion || isChatRequestActive()) return;
+
+  const chat = document.querySelector("#chat");
+  if (!chat) return;
+
+  const requestId = beginChatRequest();
+  const input = document.querySelector("#question");
+  if (input) {
+    input.value = "";
+  }
+
+  chat.insertAdjacentHTML("beforeend", `<div class="message user">${escapeHtml(trimmedQuestion)}</div>`);
+  chat.insertAdjacentHTML("beforeend", `<div class="message ai typing-indicator" data-request-id="${requestId}"><span></span><span></span><span></span></div>`);
+  if (chat.lastElementChild) {
+    chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
   let aiBubble = null;
   let accumulatedText = "";
   let renderTimeout = null;
+  let hasMeaningfulContent = false;
 
   function safeScroll() {
-    // Only auto-scroll if the user is near the bottom
     const isAtBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 150;
     if (isAtBottom && chat.lastElementChild) {
       chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
 
+  function clearTypingIndicator() {
+    const typing = document.querySelector(`.typing-indicator[data-request-id="${requestId}"]`);
+    if (typing) typing.remove();
+  }
+
   function flushRender() {
-    if (renderTimeout) clearTimeout(renderTimeout);
-    if (aiBubble) {
+    if (renderTimeout) {
+      clearTimeout(renderTimeout);
+      renderTimeout = null;
+    }
+    if (aiBubble && isOwnedRequest(requestId)) {
       aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
       safeScroll();
     }
   }
 
   try {
+    chatState.status = "SUBMITTING";
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question: trimmedQuestion }),
+      signal: chatState.controller.signal,
     });
 
+    if (!isOwnedRequest(requestId)) return;
     if (!response.ok) {
       throw new Error(`HTTP error ${response.status}`);
     }
+    if (!response.body) {
+      throw new Error("Missing response body");
+    }
 
+    chatState.status = "WAITING_FOR_FIRST_CHUNK";
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
 
     while (true) {
       const { done, value } = await reader.read();
+      if (!isOwnedRequest(requestId)) {
+        try {
+          await reader.cancel();
+        } catch (cancelError) {
+          console.warn("Reader cancel failed:", cancelError);
+        }
+        return;
+      }
       if (done) break;
-      
+
       const chunk = decoder.decode(value, { stream: true });
       if (!chunk) continue;
-      
+
       if (!aiBubble) {
-        const typing = document.querySelector("#typing-indicator");
-        if (typing) typing.remove();
-        
+        clearTypingIndicator();
         chat.insertAdjacentHTML("beforeend", `<div class="message ai"></div>`);
         aiBubble = chat.lastElementChild;
+        chatState.status = "STREAMING";
       }
-      
+
       accumulatedText += chunk;
+      if (chunk.trim()) {
+        hasMeaningfulContent = true;
+      }
 
       if (!renderTimeout) {
         renderTimeout = setTimeout(() => {
-          aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
-          safeScroll();
+          if (isOwnedRequest(requestId) && aiBubble) {
+            aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
+            safeScroll();
+          }
           renderTimeout = null;
         }, 50);
       }
     }
-    
-    const finalChunk = decoder.decode();
-    if (finalChunk) accumulatedText += finalChunk;
-    flushRender();
 
+    const finalChunk = decoder.decode();
+    if (finalChunk) {
+      accumulatedText += finalChunk;
+      if (finalChunk.trim()) {
+        hasMeaningfulContent = true;
+      }
+    }
+    if (!hasMeaningfulContent) {
+      throw new Error("Empty streamed response");
+    }
+    flushRender();
+    clearTypingIndicator();
+    appendCompletedExchange(trimmedQuestion, accumulatedText);
   } catch (error) {
+    if (!isOwnedRequest(requestId)) return;
     console.error("Chat Error:", error);
-    const typing = document.querySelector("#typing-indicator");
-    if (typing) typing.remove();
-    
+    clearTypingIndicator();
+
     if (!aiBubble) {
       chat.insertAdjacentHTML("beforeend", `<div class="message ai"></div>`);
       aiBubble = chat.lastElementChild;
     }
-    
-    if (!accumulatedText.trim()) {
-       aiBubble.innerHTML = "Your record assistant is temporarily unavailable. Please try again.";
+
+    if (!hasMeaningfulContent) {
+      const fallback = "Your record assistant is temporarily unavailable. Please try again.";
+      aiBubble.textContent = fallback;
+      appendCompletedExchange(trimmedQuestion, fallback);
     } else {
-       aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText + "\n\n*(Connection interrupted)*"));
+      flushRender();
     }
-    chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    if (chat.lastElementChild) {
+      chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   } finally {
-    input.disabled = false;
-    if (sendButton) sendButton.disabled = false;
-    input.focus();
+    if (renderTimeout) {
+      clearTimeout(renderTimeout);
+    }
+    finishChatRequest(requestId);
   }
 }
 
@@ -575,6 +778,10 @@ function escapeHtml(value) {
     "'": "&#039;",
   }[char]));
 }
+
+window.addEventListener("beforeunload", () => {
+  cancelActiveChatRequest();
+});
 
 bootstrap().catch((error) => {
   app.innerHTML = `<div class="loader">Could not load prototype data. Start the backend with <code>node server.js</code>.</div>`;
