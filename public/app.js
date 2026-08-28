@@ -58,6 +58,7 @@ function nav() {
 }
 
 function shell(content, title, desc) {
+  const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true";
   return `
     <div class="app-shell">
       ${nav()}
@@ -67,6 +68,10 @@ function shell(content, title, desc) {
           <div class="topbar-actions">
             <button class="icon-button" title="Notifications">${icon("notifications")}</button>
             <button class="icon-button" title="Record status">${icon("verified_user")}</button>
+            ${isLoggedIn 
+              ? `<button class="icon-button" id="logout-btn" title="Log Out">${icon("logout")}</button>`
+              : `<button class="button secondary" data-go="login" style="min-height:36px; padding:0 12px; font-size:12px">${icon("login")} Quick Login</button>`
+            }
             <div class="profile-mini"><span>${model.student.name}</span><div class="avatar">AS</div></div>
           </div>
         </header>
@@ -86,12 +91,64 @@ function shell(content, title, desc) {
     <div class="toast" id="toast"></div>`;
 }
 
+function login() {
+  const studentName = model ? model.student.name : "Aarav Sharma";
+  const studentId = model ? model.student.id : "SYN-2023-AIML-045";
+  const degree = model ? model.student.degree : "B.E. AI & ML";
+
+  return `
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="brand-mark" style="margin: 0 auto 16px; width:44px; height:44px;">${icon("school")}</div>
+        <h2>Quick Student Login</h2>
+        <p class="login-desc">Select pre-loaded synthetic demo student or sign in with ID.</p>
+        
+        <div class="quick-user-box">
+          <div class="avatar photo">AS</div>
+          <div>
+            <b style="font-size:15px; color:var(--ink);">${studentName}</b>
+            <small>${studentId} • ${degree}</small>
+          </div>
+        </div>
+
+        <button class="button quick-login-btn" id="instant-login-btn" style="width:100%; justify-content:center; margin-bottom:16px;">
+          ${icon("bolt")} 1-Click Instant Demo Login
+        </button>
+
+        <div class="divider"><span>OR ENTER CREDENTIALS</span></div>
+
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label>Student ID</label>
+            <input type="text" id="login-id" value="${studentId}" required />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-pass" value="demo123" required />
+          </div>
+          <button type="submit" class="button secondary" style="width:100%; justify-content:center; margin-top:6px;">
+            Sign In ${icon("arrow_forward")}
+          </button>
+        </form>
+        
+        <button class="link" data-go="landing" style="margin-top:20px; font-size:13px; border:0; background:none; color:var(--muted); cursor:pointer;">${icon("arrow_back")} Return to Home</button>
+      </div>
+    </div>`;
+}
+
 function landing() {
+  const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true";
   return `
     <section class="landing">
       <nav class="landing-nav">
         ${brand()}
-        <span class="prototype-chip">Prototype - synthetic data only</span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          ${isLoggedIn 
+            ? `<button class="button secondary" data-go="passport">${icon("badge")} View Passport</button>`
+            : `<button class="button secondary" data-go="login">${icon("login")} Quick Login</button>`
+          }
+          <span class="prototype-chip">Prototype</span>
+        </div>
       </nav>
       <main class="hero">
         <div class="hero-copy">
@@ -99,7 +156,10 @@ function landing() {
           <h1>ABC Student Passport</h1>
           <p>Turn a student's academic record into a clear, personal view of degree progress, remaining requirements, and next best courses.</p>
           <div class="hero-actions">
-            <button class="button" data-go="passport">Try Demo ${icon("arrow_forward")}</button>
+            ${isLoggedIn
+              ? `<button class="button" data-go="passport">View Demo ${icon("arrow_forward")}</button>`
+              : `<button class="button" data-go="login">⚡ Quick Login ${icon("bolt")}</button>`
+            }
             <button class="button secondary" data-go="record">View Record</button>
           </div>
           <span class="microcopy">A visual prototype using fictional student data. Not affiliated with, endorsed by, or connected to any government service.</span>
@@ -307,8 +367,22 @@ async function bootstrap() {
   render();
 }
 
+function doQuickLogin() {
+  sessionStorage.setItem("isLoggedIn", "true");
+  showToast(`Welcome back, ${model ? model.student.name : "Aarav"}!`);
+  current = "passport";
+  render();
+  window.scrollTo(0, 0);
+}
+
 function render() {
-  app.innerHTML = current === "landing" ? landing() : ({ passport, record, need, ask, planning }[current]());
+  if (current === "login") {
+    app.innerHTML = login();
+  } else if (current === "landing") {
+    app.innerHTML = landing();
+  } else {
+    app.innerHTML = ({ passport, record, need, ask, planning }[current]());
+  }
   bind();
   if (current === "planning") {
     updateWhatIf();
@@ -323,6 +397,29 @@ function bind() {
       window.scrollTo(0, 0);
     });
   });
+
+  const instantBtn = document.querySelector("#instant-login-btn");
+  if (instantBtn) {
+    instantBtn.addEventListener("click", () => doQuickLogin());
+  }
+
+  const loginForm = document.querySelector("#login-form");
+  if (loginForm) {
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      doQuickLogin();
+    });
+  }
+
+  const logoutBtn = document.querySelector("#logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.removeItem("isLoggedIn");
+      showToast("Logged out successfully");
+      current = "landing";
+      render();
+    });
+  }
 
   document.querySelectorAll(".suggestion").forEach((element) => {
     element.addEventListener("click", () => askQuestion(element.textContent));
