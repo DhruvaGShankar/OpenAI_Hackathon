@@ -11,6 +11,7 @@
   --soft-2:#e8edff;
   --success:#107647;
   --shadow:0 20px 44px rgba(34,30,84,.09);
+  --text: var(--ink);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -127,7 +128,7 @@ button{cursor:pointer}
 .suggestion{border:1px solid var(--line);background:#fff;color:var(--primary);border-radius:999px;padding:10px 13px;font-weight:800}
 .suggestion:hover{background:var(--soft)}
 .chat{display:grid;gap:14px;margin:20px 0}
-.message{max-width:74%;border-radius:8px;padding:14px 16px;line-height:1.65}
+.message{max-width:74%;border-radius:8px;padding:14px 16px;line-height:1.65;overflow-wrap:anywhere}
 .message.ai{background:#fff;border:1px solid var(--line);border-top-left-radius:2px}
 .message.user{background:#e8e4ff;color:#211578;margin-left:auto;border-top-right-radius:2px}
 .chat-input{display:flex;gap:10px;border-top:1px solid var(--line);padding-top:18px}
@@ -203,4 +204,7 @@ button{cursor:pointer}
   .hero p{margin-left:0}
   .hero-actions{justify-content:flex-start}
   .prototype-chip{display:none}
+}
+@media(max-width:480px){
+  .credits-summary{flex-direction:column;align-items:flex-start;gap:24px}
 }

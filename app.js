@@ -2,6 +2,7 @@ const app = document.querySelector("#app");
 let current = "landing";
 let model = null;
 let selectedPlan = [];
+let savedSliderValue = null;
 
 const navItems = [
   ["passport", "badge", "Passport"],
@@ -281,8 +282,8 @@ function planning() {
         </div>
 
         <div class="slider-row">
-          <label><span>Next-term credits</span><span id="credit-value">${model.planning.defaultLoad} credits</span></label>
-          <input id="credit-slider" type="range" min="8" max="22" value="${model.planning.defaultLoad}" />
+          <label><span>Next-term credits</span><span id="credit-value">${savedSliderValue} credits</span></label>
+          <input id="credit-slider" type="range" min="8" max="22" value="${savedSliderValue}" />
         </div>
         <div class="whatif-result">
           <b id="result-date">On track for May 2027</b>
@@ -304,6 +305,28 @@ async function bootstrap() {
   } catch (e) {
     selectedPlan = [];
   }
+  
+  try {
+    const storedSlider = localStorage.getItem("whatIfSlider");
+    if (storedSlider !== null) {
+       savedSliderValue = Number(storedSlider);
+       if (isNaN(savedSliderValue) || savedSliderValue < 8 || savedSliderValue > 22) {
+          savedSliderValue = model.planning.defaultLoad;
+       }
+    } else {
+       savedSliderValue = model.planning.defaultLoad;
+    }
+  } catch(e) {
+    savedSliderValue = model.planning.defaultLoad;
+  }
+  
+  const explicitlyPlannedCredits = selectedPlan
+    .map(name => model.planning.recommendations.find(r => r.name === name))
+    .filter(Boolean)
+    .reduce((sum, c) => sum + c.credits, 0);
+    
+  savedSliderValue = Math.max(savedSliderValue, Math.max(8, explicitlyPlannedCredits));
+  
   render();
 }
 
@@ -480,8 +503,11 @@ function updateWhatIf(sliderValue) {
       sliderValue = Number(slider.value);
     }
   } else {
-    sliderValue = Math.max(currentSliderMin, sliderValue || model.planning.defaultLoad);
+    sliderValue = Math.max(currentSliderMin, sliderValue || savedSliderValue);
   }
+  
+  savedSliderValue = sliderValue;
+  localStorage.setItem("whatIfSlider", savedSliderValue.toString());
 
   const hypotheticalCredits = Math.max(0, sliderValue - explicitlyPlannedCredits);
   const totalProjectedCredits = explicitlyPlannedCredits + hypotheticalCredits;
