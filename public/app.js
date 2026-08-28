@@ -70,7 +70,7 @@ function shell(content, title, desc) {
             <button class="icon-button" title="Record status">${icon("verified_user")}</button>
             ${isLoggedIn 
               ? `<button class="icon-button" id="logout-btn" title="Log Out">${icon("logout")}</button>`
-              : `<button class="button secondary" data-go="login" style="min-height:36px; padding:0 12px; font-size:12px">${icon("login")} Quick Login</button>`
+              : `<button class="button secondary" data-go="login" style="min-height:36px; padding:0 12px; font-size:12px">${icon("login")} Login</button>`
             }
             <div class="profile-mini"><span>${model.student.name}</span><div class="avatar">AS</div></div>
           </div>
@@ -100,8 +100,8 @@ function login() {
     <div class="login-wrapper">
       <div class="login-card">
         <div class="brand-mark" style="margin: 0 auto 16px; width:44px; height:44px;">${icon("school")}</div>
-        <h2>Quick Student Login</h2>
-        <p class="login-desc">Select pre-loaded synthetic demo student or sign in with ID.</p>
+        <h2>Student Login</h2>
+        <p class="login-desc">Sign in with your student credentials to access your passport.</p>
         
         <div class="quick-user-box">
           <div class="avatar photo">AS</div>
@@ -110,12 +110,6 @@ function login() {
             <small>${studentId} • ${degree}</small>
           </div>
         </div>
-
-        <button class="button quick-login-btn" id="instant-login-btn" style="width:100%; justify-content:center; margin-bottom:16px;">
-          ${icon("bolt")} 1-Click Instant Demo Login
-        </button>
-
-        <div class="divider"><span>OR ENTER CREDENTIALS</span></div>
 
         <form id="login-form" class="login-form">
           <div class="form-group">
@@ -126,7 +120,7 @@ function login() {
             <label>Password</label>
             <input type="password" id="login-pass" value="demo123" required />
           </div>
-          <button type="submit" class="button secondary" style="width:100%; justify-content:center; margin-top:6px;">
+          <button type="submit" class="button" style="width:100%; justify-content:center; margin-top:6px;">
             Sign In ${icon("arrow_forward")}
           </button>
         </form>
@@ -146,7 +140,7 @@ function landing() {
         <div style="display:flex; align-items:center; gap:10px;">
           ${isLoggedIn 
             ? `<button class="button secondary" data-go="passport">${icon("badge")} View Passport</button>`
-            : `<button class="button secondary" data-go="login">${icon("login")} Quick Login</button>`
+            : `<button class="button secondary" data-go="login">${icon("login")} Login</button>`
           }
           <span class="prototype-chip">Prototype</span>
         </div>
@@ -159,9 +153,8 @@ function landing() {
           <div class="hero-actions">
             ${isLoggedIn
               ? `<button class="button" data-go="passport">View Demo ${icon("arrow_forward")}</button>`
-              : `<button class="button" data-go="login">⚡ Quick Login ${icon("bolt")}</button>`
+              : `<button class="button" data-go="login">Login ${icon("arrow_forward")}</button>`
             }
-            <button class="button secondary" data-go="record">View Record</button>
           </div>
           <span class="microcopy">A visual prototype using fictional student data. Not affiliated with, endorsed by, or connected to any government service.</span>
         </div>
