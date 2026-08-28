@@ -13,7 +13,7 @@ try {
 }
 
 const port = process.env.PORT || 4174;
-const root = __dirname;
+const root = path.join(__dirname, "public");
 
 // --- CANONICAL STUDENT DATA ---
 
