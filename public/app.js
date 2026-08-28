@@ -39,7 +39,6 @@ function nav() {
   return `
     <aside class="sidebar">
       ${brand()}
-      <button class="sidebar-action" data-go="passport">${icon("verified_user")} View Demo Passport</button>
       <div class="nav-group">${items}</div>
       <div class="sidebar-foot">
         Prototype experience<br />
@@ -243,21 +242,136 @@ function passport() {
 
 function record() {
   return shell(`
-    <section class="records">
-      ${model.records.map((sem) => `
-        <div class="semester">
-          <div class="semester-header"><b>${sem.name}</b><span>${sem.credits} credits earned</span></div>
-          ${sem.courses.map((course) => `
-            <div class="course">
-              <div><div class="course-code">${course.code}</div><strong>${course.name}</strong></div>
-              <span class="pill ${course.tone} category">${course.category}</span>
-              <span>${course.credits} cr</span>
-              <span class="complete">${icon("check_circle", true)} Complete</span>
+    <div class="education-sections" style="display:flex; flex-direction:column; gap:32px;">
+      
+      <!-- SECTION 1: UNIVERSITY EDUCATION -->
+      <section class="education-block">
+        <div class="education-header" style="background:#ffffff; border:1px solid var(--line); border-radius:14px 14px 0 0; padding:20px 24px; border-bottom:2px solid var(--primary);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div class="overline" style="color:var(--primary);">Higher Education</div>
+              <h2 style="margin:4px 0 2px; font-size:20px; font-weight:900;">University Degree (B.E. AI & ML)</h2>
+              <p style="margin:0; color:var(--muted); font-size:13px;">Visvesvaraya Technological University • SYN-2023-AIML-045 • 2023 – Present</p>
+            </div>
+            <span class="status">CGPA: 8.47</span>
+          </div>
+        </div>
+        <div class="records" style="border:1px solid var(--line); border-top:none; border-radius:0 0 14px 14px; padding:20px; background:#ffffff;">
+          ${model.records.map((sem) => `
+            <div class="semester">
+              <div class="semester-header"><b>${sem.name}</b><span>${sem.credits} credits earned</span></div>
+              ${sem.courses.map((course) => `
+                <div class="course">
+                  <div><div class="course-code">${course.code}</div><strong>${course.name}</strong></div>
+                  <span class="pill ${course.tone} category">${course.category}</span>
+                  <span>${course.credits} cr</span>
+                  <span class="complete">${icon("check_circle", true)} Complete</span>
+                </div>`).join("")}
             </div>`).join("")}
-        </div>`).join("")}
-    </section>`,
+        </div>
+      </section>
+
+      <!-- SECTION 2: PRE-UNIVERSITY EDUCATION -->
+      <section class="education-block">
+        <div class="education-header" style="background:#ffffff; border:1px solid var(--line); border-radius:14px 14px 0 0; padding:20px 24px; border-bottom:2px solid #4f46e5;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div class="overline" style="color:#4f46e5;">Pre-University Education</div>
+              <h2 style="margin:4px 0 2px; font-size:20px; font-weight:900;">Class 12 / Pre-University Certificate (PUC)</h2>
+              <p style="margin:0; color:var(--muted); font-size:13px;">Karnataka State Pre-University Board • Science (PCMB) • 2021 – 2023</p>
+            </div>
+            <span class="status" style="background:#e8edff; color:#3525cd;">Score: 92.4%</span>
+          </div>
+        </div>
+        <div class="records" style="border:1px solid var(--line); border-top:none; border-radius:0 0 14px 14px; padding:20px; background:#ffffff;">
+          <div class="semester">
+            <div class="semester-header"><b>Senior Secondary Examination (PUC II)</b><span>Completed May 2023</span></div>
+            <div class="course">
+              <div><div class="course-code">MATH12</div><strong>Mathematics II</strong></div>
+              <span class="pill category" style="background:#e8edff; color:#3525cd">Core Subject</span>
+              <span>100 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">PHYS12</div><strong>Physics II</strong></div>
+              <span class="pill category" style="background:#e8edff; color:#3525cd">Core Subject</span>
+              <span>96 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">CHEM12</div><strong>Chemistry II</strong></div>
+              <span class="pill category" style="background:#e8edff; color:#3525cd">Core Subject</span>
+              <span>94 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">BIOL12</div><strong>Biology II</strong></div>
+              <span class="pill category" style="background:#e8edff; color:#3525cd">Core Subject</span>
+              <span>92 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">ENG12</div><strong>English Literature & Language</strong></div>
+              <span class="pill category" style="background:#f0f2ff; color:#5f6576">Language</span>
+              <span>90 / 100</span>
+              <span class="complete">${icon("check_circle", true)} First Class</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: SECONDARY SCHOOLING -->
+      <section class="education-block">
+        <div class="education-header" style="background:#ffffff; border:1px solid var(--line); border-radius:14px 14px 0 0; padding:20px 24px; border-bottom:2px solid #006c49;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div class="overline" style="color:#006c49;">Secondary Schooling</div>
+              <h2 style="margin:4px 0 2px; font-size:20px; font-weight:900;">Class 10 / Secondary School Certificate (SSLC)</h2>
+              <p style="margin:0; color:var(--muted); font-size:13px;">Karnataka Secondary Education Examination Board (KSEEB) • 2021</p>
+            </div>
+            <span class="status" style="background:#e7f7ef; color:#006c49;">Score: 94.8%</span>
+          </div>
+        </div>
+        <div class="records" style="border:1px solid var(--line); border-top:none; border-radius:0 0 14px 14px; padding:20px; background:#ffffff;">
+          <div class="semester">
+            <div class="semester-header"><b>SSLC Board Examination</b><span>Completed April 2021</span></div>
+            <div class="course">
+              <div><div class="course-code">MATH10</div><strong>Mathematics</strong></div>
+              <span class="pill category" style="background:#e7f7ef; color:#006c49">Core Subject</span>
+              <span>98 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">SCI10</div><strong>Science & Technology</strong></div>
+              <span class="pill category" style="background:#e7f7ef; color:#006c49">Core Subject</span>
+              <span>96 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">SOC10</div><strong>Social Science</strong></div>
+              <span class="pill category" style="background:#e7f7ef; color:#006c49">Core Subject</span>
+              <span>95 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">ENG10</div><strong>English (Second Language)</strong></div>
+              <span class="pill category" style="background:#f0f2ff; color:#5f6576">Language</span>
+              <span>93 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+            <div class="course">
+              <div><div class="course-code">KAN10</div><strong>First Language (Kannada)</strong></div>
+              <span class="pill category" style="background:#f0f2ff; color:#5f6576">Language</span>
+              <span>95 / 100</span>
+              <span class="complete">${icon("check_circle", true)} Distinction</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>`,
     "Academic Record",
-    "Your completed coursework, organised semester by semester.");
+    "Comprehensive educational journey across Schooling, Pre-University, and University coursework.");
 }
 
 function need() {
