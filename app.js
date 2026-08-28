@@ -340,13 +340,100 @@ async function askQuestion(question) {
   const chat = document.querySelector("#chat");
   chat.insertAdjacentHTML("beforeend", `<div class="message user">${escapeHtml(question)}</div>`);
   const input = document.querySelector("#question");
+  const sendButton = document.querySelector("#send");
+  
   input.value = "";
-  const { answer } = await api("/api/chat", {
-    method: "POST",
-    body: JSON.stringify({ question }),
-  });
-  chat.insertAdjacentHTML("beforeend", `<div class="message ai">${answer}</div>`);
+  input.disabled = true;
+  if (sendButton) sendButton.disabled = true;
+
+  chat.insertAdjacentHTML("beforeend", `<div class="message ai typing-indicator" id="typing-indicator"><span></span><span></span><span></span></div>`);
   chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  
+  let aiBubble = null;
+  let accumulatedText = "";
+  let renderTimeout = null;
+
+  function safeScroll() {
+    // Only auto-scroll if the user is near the bottom
+    const isAtBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 150;
+    if (isAtBottom && chat.lastElementChild) {
+      chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  function flushRender() {
+    if (renderTimeout) clearTimeout(renderTimeout);
+    if (aiBubble) {
+      aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
+      safeScroll();
+    }
+  }
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      if (!chunk) continue;
+      
+      if (!aiBubble) {
+        const typing = document.querySelector("#typing-indicator");
+        if (typing) typing.remove();
+        
+        chat.insertAdjacentHTML("beforeend", `<div class="message ai"></div>`);
+        aiBubble = chat.lastElementChild;
+      }
+      
+      accumulatedText += chunk;
+
+      if (!renderTimeout) {
+        renderTimeout = setTimeout(() => {
+          aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText));
+          safeScroll();
+          renderTimeout = null;
+        }, 50);
+      }
+    }
+    
+    const finalChunk = decoder.decode();
+    if (finalChunk) accumulatedText += finalChunk;
+    flushRender();
+
+  } catch (error) {
+    console.error("Chat Error:", error);
+    const typing = document.querySelector("#typing-indicator");
+    if (typing) typing.remove();
+    
+    if (!aiBubble) {
+      chat.insertAdjacentHTML("beforeend", `<div class="message ai"></div>`);
+      aiBubble = chat.lastElementChild;
+    }
+    
+    if (!accumulatedText.trim()) {
+       aiBubble.innerHTML = "Your record assistant is temporarily unavailable. Please try again.";
+    } else {
+       aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText + "\n\n*(Connection interrupted)*"));
+    }
+    chat.lastElementChild.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } finally {
+    input.disabled = false;
+    if (sendButton) sendButton.disabled = false;
+    input.focus();
+  }
 }
 
 async function updateWhatIf(load) {
