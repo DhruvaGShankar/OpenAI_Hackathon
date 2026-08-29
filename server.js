@@ -13,7 +13,7 @@ try {
 }
 
 const port = process.env.PORT || 4174;
-const root = __dirname;
+const root = path.join(__dirname, "public");
 
 // --- CANONICAL STUDENT DATA ---
 
@@ -443,15 +443,22 @@ function serveStatic(response, url) {
   });
 }
 
-const server = http.createServer((request, response) => {
-  const url = new URL(request.url, `http://${request.headers.host}`);
+function requestHandler(request, response) {
+  const host = request.headers.host || "localhost";
+  const url = new URL(request.url, `http://${host}`);
   if (url.pathname.startsWith("/api/")) {
     handleApi(request, response, url);
   } else {
     serveStatic(response, url);
   }
-});
+}
 
-server.listen(port, () => {
-  console.log(`ABC Student Passport prototype running at http://localhost:${port}`);
-});
+module.exports = requestHandler;
+
+if (require.main === module) {
+  const server = http.createServer(requestHandler);
+  server.listen(port, () => {
+    console.log(`ABC Student Passport prototype running at http://localhost:${port}`);
+  });
+}
+
