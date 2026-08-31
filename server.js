@@ -356,7 +356,7 @@ ${JSON.stringify(context, null, 2)}`;
               { role: "system", content: systemPrompt },
               { role: "user", content: question }
             ],
-            max_tokens: 300,
+            max_tokens: 1500,
             temperature: 0.2
           }),
           signal: abortController.signal
